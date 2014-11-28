@@ -1,0 +1,142 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Use Bing Maps REST Services with jQuery to build an autocomplete box and find a location dynamically</title>
+  <script src="http://ajax.aspnetcdn.com/ajax/jquery/jquery-1.5.1.js" type="text/javascript"></script>
+  <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.10/jquery-ui.js" type="text/javascript"></script>
+  <link href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.10/themes/redmond/jquery-ui.css" rel="stylesheet" type="text/css"/>
+  <style type="text/css">
+      #searchBox {
+          width: 25em;
+      }
+  </style>
+  <script type="text/javascript">
+
+      var originPointString = "-36.7281799,174.7384338[Point]";
+      var destinationPointString = "-36.8461914,174.7571869[Point]";
+
+      $(document).ready(function () {
+          $("#origin").autocomplete({
+              source: function (request, response) {
+                  $.ajax({
+                      url: "http://dev.virtualearth.net/REST/v1/Locations",
+                      dataType: "jsonp",
+                      data: {
+                          key: "AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5",
+                          q: request.term
+                      },
+                      jsonp: "jsonp",
+                      success: function (data) {
+                          var result = data.resourceSets[0];
+                          if (result) {
+                              if (result.estimatedTotal > 0) {
+                                  response($.map(result.resources, function (item) {
+                                      setOriginPointString(item.point.coordinates);
+                                      console.log(originPointString);
+                                      return {
+                                          data: item,
+                                          label: item.name + ' (' + item.address.countryRegion + ')',
+                                          value: item.name
+                                      }
+                                  }));
+                              }
+                          }
+                      }
+                  });
+              },
+              minLength: 1
+          });
+      });
+
+      $(document).ready(function () {
+          $("#destination").autocomplete({
+              source: function (request, response) {
+                  $.ajax({
+                      url: "http://dev.virtualearth.net/REST/v1/Locations",
+                      dataType: "jsonp",
+                      data: {
+                          key: "AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5",
+                          q: request.term
+                      },
+                      jsonp: "jsonp",
+                      success: function (data) {
+                          var result = data.resourceSets[0];
+                          if (result) {
+                              if (result.estimatedTotal > 0) {
+                                  response($.map(result.resources, function (item) {
+                                      setDestinationPointString(item.point.coordinates);
+                                      console.log(destinationPointString);
+                                      return {
+                                          data: item,
+                                          label: item.name + ' (' + item.address.countryRegion + ')',
+                                          value: item.name
+                                      }
+                                  }));
+                              }
+                          }
+                      }
+                  });
+              },
+              minLength: 1
+          });
+      });
+
+      function setOriginPointString(coordinates) {
+          originPointString = coordinates[0] + "," + coordinates[1] + " [Point]"
+      }
+
+      function setDestinationPointString(coordinates) {
+          destinationPointString = coordinates[0] + "," + coordinates[1] + " [Point]"
+      }
+
+      function calculateTrafficTime() {
+          console.log("2");
+          var query = encodeURI("wp.0=" + originPointString + "&wp.1=" + destinationPointString + "&avoid=minimizeTolls&key=AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5");
+          $.ajax({
+              url: "http://dev.virtualearth.net/REST/V1/Routes/Driving?" + query,
+              dataType: "jsonp",
+              jsonp: "jsonp",
+              success: function (data) {
+                  console.log(data);
+                  console.log();
+                  var trafficTime = data.resourceSets[0].resources[0].travelDurationTraffic;
+                  console.log(trafficTime);
+                  $("#trafficTimeLabel").text(trafficTime);
+
+              }
+          });
+
+      }
+
+      $(document).ready(function () {
+          $("#calculateTrafficTimeButton").click(function () {
+              console.log("1");
+              calculateTrafficTime();
+          });
+      });
+  </script>
+
+
+</head>
+<body>
+<div>
+  <div class="ui-widget">
+    <label for="origin">
+      Origin:
+    </label>
+    <input id="origin"/>
+    <br>
+    <label for="destination">
+      Destination:
+    </label>
+    <input id="destination"/>
+  </div>
+  <div id="searchResult" class="ui-widget" style="margin-top: 1em;">
+  </div>
+  <div>
+    <button id="calculateTrafficTimeButton">Calculate Traffic Time</button>
+    <div id="trafficTimeLabel"/>
+  </div>
+</div>
+</body>
+</html>
