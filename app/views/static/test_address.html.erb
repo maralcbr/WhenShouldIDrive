@@ -10,20 +10,36 @@
           width: 25em;
       }
   </style>
+  <script type="text/javascript" src="http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>
   <script type="text/javascript">
+
+      var map = null;
+
+      function GetMap() {
+          // Initialize the map
+          map = new Microsoft.Maps.Map(document.getElementById("mapDiv"), {
+              credentials: "AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5",
+              mapTypeId: Microsoft.Maps.MapTypeId.road
+          });
+
+
+      }
+
 
       var originPointString = "-36.7281799,174.7384338[Point]";
       var destinationPointString = "-36.8461914,174.7571869[Point]";
 
-      $(document).ready(function () {
+
+      $(document).ready(function() {
           $("#origin").autocomplete({
               source: function (request, response) {
+                  var query = request.term + ",New Zealand";
                   $.ajax({
                       url: "http://dev.virtualearth.net/REST/v1/Locations",
                       dataType: "jsonp",
                       data: {
                           key: "AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5",
-                          q: request.term
+                          q: query
                       },
                       jsonp: "jsonp",
                       success: function (data) {
@@ -91,7 +107,7 @@
 
       function calculateTrafficTime() {
           console.log("2");
-          var query = encodeURI("wp.0=" + originPointString + "&wp.1=" + destinationPointString + "&avoid=minimizeTolls&key=AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5");
+          var query = encodeURI("wp.0=" + originPointString + "&wp.1=" + destinationPointString + "&routePathOutput=Points&output=json&avoid=minimizeTolls&key=AqtDSeP58q7OcmYcV45dIPgp1ozzyJTfbpsRjgARWn43AU3T-tuzSqN06_8Uf7b5");
           $.ajax({
               url: "http://dev.virtualearth.net/REST/V1/Routes/Driving?" + query,
               dataType: "jsonp",
@@ -101,11 +117,39 @@
                   console.log();
                   var trafficTime = data.resourceSets[0].resources[0].travelDurationTraffic;
                   console.log(trafficTime);
-                  $("#trafficTimeLabel").text(trafficTime);
+                  $("#trafficTimeLabel").text(Math.round(trafficTime / 60) + " minutes");
+
+                  if (data &&
+                          data.resourceSets &&
+                          data.resourceSets.length > 0 &&
+                          data.resourceSets[0].resources &&
+                          data.resourceSets[0].resources.length > 0) {
+
+                      // Set the map view
+                      var bbox = data.resourceSets[0].resources[0].bbox;
+                      var viewBoundaries = Microsoft.Maps.LocationRect.fromLocations(new Microsoft.Maps.Location(bbox[0], bbox[1]), new Microsoft.Maps.Location(bbox[2], bbox[3]));
+                      map.setView({bounds: viewBoundaries});
+
+
+                      // Draw the route
+                      var routeline = data.resourceSets[0].resources[0].routePath.line;
+                      var routepoints = new Array();
+
+                      for (var i = 0; i < routeline.coordinates.length; i++) {
+
+                          routepoints[i] = new Microsoft.Maps.Location(routeline.coordinates[i][0], routeline.coordinates[i][1]);
+                      }
+
+
+                      // Draw the route on the map
+                      var routeshape = new Microsoft.Maps.Polyline(routepoints, {strokeColor: new Microsoft.Maps.Color(200, 0, 0, 200)});
+                      map.entities.push(routeshape);
+                  }
 
               }
-          });
 
+
+          });
       }
 
       $(document).ready(function () {
@@ -118,7 +162,7 @@
 
 
 </head>
-<body>
+<body onload="GetMap();">
 <div>
   <div class="ui-widget">
     <label for="origin">
@@ -137,6 +181,8 @@
     <button id="calculateTrafficTimeButton">Calculate Traffic Time</button>
     <div id="trafficTimeLabel"/>
   </div>
+
+  <div id='mapDiv' style="position:relative; width:400px; height:400px;"></div>
 </div>
 </body>
 </html>
